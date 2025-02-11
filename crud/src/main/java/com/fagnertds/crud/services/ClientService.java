@@ -3,6 +3,8 @@ package com.fagnertds.crud.services;
 import com.fagnertds.crud.dto.ClientDTO;
 import com.fagnertds.crud.entities.Client;
 import com.fagnertds.crud.repositories.ClientRepository;
+import com.fagnertds.crud.services.exceptions.ResourceNotFoundException;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,7 +28,7 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     public ClientDTO findById (Long id) {
-        Client client = repository.findById(id).get();
+        Client client = repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Recurso não encontrado"));
         ClientDTO dto = new ClientDTO(client);
         return dto;
     }
@@ -41,14 +43,21 @@ public class ClientService {
 
     @Transactional
     public ClientDTO update(ClientDTO dto, Long id) {
-        Client client = repository.getReferenceById(id);
-        copyDtoToEntity(dto, client);
-        client = repository.save(client);
-        return new ClientDTO(client);
+        try {
+            Client client = repository.getReferenceById(id);
+            copyDtoToEntity(dto, client);
+            client = repository.save(client);
+            return new ClientDTO(client);
+        } catch (EntityNotFoundException e) {
+            throw new ResourceNotFoundException("Recurso não encontrado no banco de dados");
+        }
     }
 
     public void delete(Long id) {
-        repository.deleteById(id);
+        if (!repository.existsById(id)) {
+            throw new ResourceNotFoundException("Recurso não encontrado no banco de dados");
+        }
+            repository.deleteById(id);
     }
 
 
